@@ -9,6 +9,7 @@
 #include <sys/wait.h>
 #include <sys/ptrace.h>
 #include <unistd.h>
+#include <errno.h>
 
 int f;// file descriptor
 void *map;// memory map
@@ -24,39 +25,68 @@ void *madviseThread(void *arg)
   printf("madvise %d\n\n",c);// sum of errors
 }
 
+
 int main(int argc,char *argv[]){
   if(argc<3)
     return 1;
   printf("%s %s\n", argv[1], argv[2]);
   f=open(argv[1],O_RDONLY);// open read only file
   fstat(f,&st);// stat the fd
+  
+  int file_size = st.st_size;
+  
   map=mmap(NULL,
-           st.st_size+sizeof(long),// size is filesize plus padding
+           file_size+sizeof(long),// size is filesize plus padding
            PROT_READ,// read-only
            MAP_PRIVATE,// private mapping for cow
            f,// file descriptor
            0);// zero
   printf("mmap %lx\n\n",(unsigned long)map);// sum of error code
-  
   pid=fork();// fork process 
   if(pid)
   { 
-    waitpid(pid,NULL,0)                    ;// wait for child
-    int u,i,o,c=0,l=strlen(argv[2])        ;// util vars (l=length)
-    for(i=0;i<100/l;i++)//////////////////// loop to 10K divided by l
-      for(o=0;o<l;o++)//////////////////////// repeat for each byte
-        for(u=0;u<100;u++)////////////////// try 10K times each time
+    int fd_source;
+    fd_source = open (argv[2], O_RDONLY);
+    if(fd_source == -1)
+    {
+        perror("source");
+        return -1;
+    }
+    
+    ssize_t ret;
+    ssize_t len = file_size;
+    char buf[len];
+    while (len != 0 && (ret = read (fd_source, buf, len)) != 0)
+    {
+        if(ret == -1)
         {
-          int ret =ptrace(PTRACE_POKETEXT  ,// inject into memory
+            if (errno == EINTR)
+                continue;
+            perror ("read");
+            break;
+        }
+        len -= ret;
+       // buf += ret;
+    }
+    
+    printf("%s", buf);
+    
+    waitpid(pid,NULL,0);
+    int u,i,o,c=0,l=strlen(buf);
+    for(i=0;i<200/l;i++)
+      for(o=0;o<l;o++)
+        for(u=0;u<200;u++)
+        {
+           int ret =ptrace(PTRACE_POKETEXT  ,// inject into memory
                     pid                    ,// process id
                     map+o                  ,// address
-                    *((long*)(argv[2]+o))) ;// value
+                    *((long*)(buf+o)));
+    //                    *((long*)(argv[2]+o))) ;// value
           c+= ret;
           if(ret)
           {
             perror("ptrace error");
           }
-                   
         }            
     printf("ptrace %d\n\n",c);// sum of error code
   }
