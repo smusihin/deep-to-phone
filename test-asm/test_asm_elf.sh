@@ -2,7 +2,7 @@
 echo
 echo "Create and push binary"
 ../arm-linux-gcc-4.4.3/bin/arm-linux-as -o first.o first.s
-../arm-linux-gcc-4.4.3/bin/arm-linux-gcc -o first first.o -static
+../arm-linux-gcc-4.4.3/bin/arm-linux-ld -o first first.o
 adb push first /data/local/tmp/first
 adb shell chmod 766 /data/local/tmp/first
 echo "Create and push shell"

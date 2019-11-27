@@ -1,9 +1,23 @@
-.text           /*code section*/
-.global main    /*'main' is emtry point and must be global*/
-.func main      /*'main' is a function*/
+.data
+
+msg:
+.ascii "Hello, ARM World!\n"
+len = . - msg
 
 
-main:
-    mov r0, #2 
-    bx lr       /*return from main*/
+.text
+
+.globl _start
+_start:
+/* write syscall */
+mov %r0, $1 
+ldr %r1, =msg 
+ldr %r2, =len 
+mov %r7, $4 
+swi $0 
+
+/* exit syscall */
+mov %r0, $0 
+mov %r7, $1 
+swi $0
 
