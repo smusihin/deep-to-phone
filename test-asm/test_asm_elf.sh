@@ -8,9 +8,8 @@ echo "Create and push binary"
 adb push shell /data/local/tmp/shell
 
 echo "Start......"
-adb shell /data/local/tmp/shell
+adb shell /data/local/tmp/shell /system/bin/sh
 #remove temporary files
-rm test_asm.sh
 rm shell.o
 rm shell
 echo
